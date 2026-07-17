@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pandas
+scikit-learn
+xgboost
+lightgbm
+shap
+supabase
+python-dotenv

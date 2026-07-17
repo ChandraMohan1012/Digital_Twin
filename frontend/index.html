@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin Live Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-anim"></div>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Healthcare Digital Twin</h1>
+                <p class="subtitle">Real-time Patient Monitoring & ML Risk Assessment</p>
+            </div>
+            <div class="status-indicator">
+                <div class="dot pulse"></div>
+                <span>Live Data Feed</span>
+            </div>
+        </header>
+
+        <div class="top-row">
+            <div class="glass-card risk-card" id="riskCard">
+                <h3>Current Risk Level</h3>
+                <h1 id="riskLabel">Loading...</h1>
+                <p id="riskConf">Confidence: --</p>
+            </div>
+            <div class="glass-card patient-card">
+                <h3>Patient Profile</h3>
+                <p><strong>ID:</strong> <span id="patientId">3f0f57a9-2c05-4e3a-97bf-d9bb6c24cbc2</span></p>
+                <p><strong>Status:</strong> <span id="patientStatus" class="tag">Loading...</span></p>
+                <p><strong>Last Updated:</strong> <span id="lastUpdated">--</span></p>
+            </div>
+        </div>
+
+        <h2 class="section-title">Live Sensor Vitals</h2>
+        <div class="vitals-grid">
+            <div class="glass-card vital-card" id="hrCard">
+                <div class="vital-icon">❤️</div>
+                <h3>Heart Rate</h3>
+                <div class="vital-value"><span id="valHR">--</span> <span class="unit">bpm</span></div>
+                <div class="vital-avg">24h Avg: <span id="avgHR">--</span></div>
+            </div>
+            <div class="glass-card vital-card" id="spo2Card">
+                <div class="vital-icon">💨</div>
+                <h3>SpO2</h3>
+                <div class="vital-value"><span id="valSpO2">--</span> <span class="unit">%</span></div>
+                <div class="vital-avg">24h Avg: <span id="avgSpO2">--</span></div>
+            </div>
+            <div class="glass-card vital-card" id="tempCard">
+                <div class="vital-icon">🌡️</div>
+                <h3>Temperature</h3>
+                <div class="vital-value"><span id="valTemp">--</span> <span class="unit">°C</span></div>
+                <div class="vital-avg">24h Avg: <span id="avgTemp">--</span></div>
+            </div>
+            <div class="glass-card vital-card" id="bpCard">
+                <div class="vital-icon">🩸</div>
+                <h3>Blood Pressure</h3>
+                <div class="vital-value"><span id="valBP">--/--</span> <span class="unit">mmHg</span></div>
+                <div class="vital-avg">Sys/Dia</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">AI Explainability (SHAP)</h2>
+        <div class="glass-card shap-card">
+            <p>Our ML model continuously evaluates the Twin State. Anomalies identified:</p>
+            <div id="shapList" class="shap-list">
+                <p class="text-muted" style="margin-top: 1rem;">Monitoring active. Top risk factors will appear here when elevated.</p>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
