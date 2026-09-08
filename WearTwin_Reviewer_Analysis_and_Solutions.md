@@ -200,11 +200,16 @@ We sincerely thank the Program Chairs and the reviewers for their constructive, 
 > *"The abstract presents only an evaluation plan rather than validated experimental results. The methodology should clearly define the risk model, digital-twin update process, sensor calibration, dataset, validation protocol, and clinical safety measures."*
 
 **Response:**  
-The abstract has been revised to present concrete, reproducible quantitative outcomes:
-- Dataset: $N=5{,}000$ physiological instances generated from standard clinical vital distributions with Gaussian noise ($\sigma=1.6$) and an 80/20 stratified split.
-- Model Performance: XGBoost achieved Accuracy $80.70\%$, Precision $70.04\%$, Recall $62.33\%$, F1-Score $0.6596$, and AUC-ROC $0.8353$; LightGBM achieved Accuracy $80.50\%$, Precision $70.27\%$, Recall $60.67\%$, F1-Score $0.6512$, and AUC-ROC $0.8345$.
-- Sensitivity Tuning: Lowering the decision threshold to $T=0.40$ increases sensitivity to $73.33\%$ ($78.33\%$ at $T=0.35$).
-- Clinical Safety Measures: Framed strictly as an early risk-screening tool under CDSCO/FDA SaMD guidelines, paired with automated z-score statistical drift detection ($z > 3.5$).
+The abstract and evaluation sections have been updated with concrete, reproducible quantitative outcomes validated on a **real-world human clinical benchmark (CDC NHANES 2017–2018 adult cohort, $N=5{,}261$ participants)** with laboratory-confirmed $\text{HbA}_{1c}$ ground truth:
+- **Clinical Cohort:** $N=5{,}261$ real human participants from the US CDC NHANES survey ($43.9\%$ dysglycemia prevalence: $2{,}310$ positive cases with $\text{HbA}_{1c} \ge 5.7\%$, including $746$ clinical diabetes cases with $\text{HbA}_{1c} \ge 6.5\%$).
+- **Multi-Model Benchmark:** Evaluated four architectures under 80/20 stratified hold-out validation:
+  - **LightGBM (Champion):** ROC-AUC **$0.7811$**, Recall **$80.30\%$**, Precision **$63.86\%$**, F1-Score **$0.7114$**, Accuracy **$71.42\%$**.
+  - **XGBoost:** ROC-AUC **$0.7846$**, Recall **$79.65\%$**, Precision **$63.89\%$**, F1-Score **$0.7091$**, Accuracy **$71.32\%$**.
+  - **Random Forest:** ROC-AUC **$0.7855$**, Recall **$79.22\%$**, Precision **$62.99\%$**, F1-Score **$0.7018$**, Accuracy **$70.47\%$**.
+  - **Logistic Regression:** ROC-AUC **$0.7843$**, Recall **$72.51\%$**, Precision **$63.93\%$**, F1-Score **$0.6795$**, Accuracy **$69.99\%$**.
+- **Clinical Threshold Calibration:** Lowering decision threshold to $T=0.45$ yields **$83.5\%$ Recall** ($\text{F1}=0.7168$, Specificity $61.3\%$), while $T=0.35$ achieves **$89.8\%$ screening sensitivity** to minimize missed diagnoses.
+- **Explainable AI (SHAP):** Global TreeExplainer attributions identify chronological Age ($\phi = 0.9239$), BMI ($\phi = 0.4050$), and Systolic BP ($\phi = 0.1979$) as primary predictive contributors, followed by Resting Pulse ($\phi = 0.1168$).
+- **Clinical Safety Measures:** Framed strictly as an early risk-screening aid under CDSCO/FDA SaMD guidelines, coupled with real-time $z$-score drift detection ($z > 3.5$).
 
 ---
 
@@ -256,12 +261,13 @@ Addressed in Section IV-A and Section IV-D through **Multi-Modal Contextual Gati
 
 **Response:**  
 Addressed in Sections VI-D and VI-E:
-- The 70:30 negative-to-positive skew biased standard gradient boosting toward majority-class accuracy.
-- Applying positive-class weighting ($\text{scale\_pos\_weight} = 2.33$ for XGBoost and `class_weight='balanced'` for LightGBM) improved standard recall to $62.33\%$ (XGBoost) and $60.67\%$ (LightGBM).
-- To address clinical early warning requirements, we conducted decision threshold optimization ($T \in [0.30, 0.50]$):
-  - Setting $T=0.40$ increases sensitivity to **$73.33\%$** ($\text{Precision}=57.59\%$).
-  - Setting $T=0.35$ increases sensitivity to **$78.33\%$** ($\text{Precision}=52.93\%$).
-- In screening systems, a higher false-positive rate (prompting a simple finger-prick blood glucose test) is preferable to missing high-risk individuals.
+- Under real-world human data (CDC NHANES adult cohort, $N=5{,}261$), class imbalance is handled via positive-class weighting ($\text{scale\_pos\_weight} = 1.28$).
+- At the standard threshold ($T=0.50$), LightGBM achieves **$80.30\%$ Recall** ($79.65\%$ for XGBoost), eliminating the prior $0.54$ bottleneck.
+- To prioritize clinical sensitivity for early-stage screening, we calibrated decision thresholds ($T \in [0.25, 0.60]$):
+  - Calibrated threshold $T=0.45$: Yields **$83.50\%$ Recall** ($\text{Precision}=62.80\%$, $\text{F1}=0.7168$, Specificity $61.30\%$).
+  - High-sensitivity screening threshold $T=0.35$: Reaches **$89.80\%$ Recall** ($\text{Precision}=58.80\%$).
+  - Maximum-catch screening threshold $T=0.25$: Captures **$94.60\%$ of at-risk patients** ($\text{Precision}=55.70\%$).
+- For early preventative intervention, a calibrated threshold of $T=0.45$ establishes an optimal clinical balance, ensuring $>83\%$ of dysglycemic individuals are flagged for confirmatory laboratory testing while maintaining $>61\%$ specificity.
 
 ---
 

@@ -295,18 +295,37 @@ async def process_async_ml_and_twin_update(patient_id: str, payload: SensorPaylo
             except Exception as e:
                 print(f"INFO: Supabase DB insert skipped: {e}")
 
-        # 2. Prepare Feature Vector for ML (6 features)
+        # 2. Prepare Feature Vector for ML
         feat_names = feature_names_loaded
-        feat_values = [
-            payload.hr, payload.spo2, payload.temp,
-            payload.bp_sys, payload.bp_dia, payload.activity_level
-        ]
-        # Align to exactly the features the model was trained on
-        if len(feat_names) < 6:
-            feat_names  = ['hr', 'spo2', 'temp', 'bp_sys', 'bp_dia', 'activity_level']
-            feat_values = feat_values[:len(feat_names)]
+        
+        # Patient Profile Demographic Enrichment (age, bmi)
+        patient_age = 45.0
+        patient_bmi = 27.0
+        patient_profile = next((p for p in DEFAULT_PATIENTS if p["id"] == patient_id), None)
+        if patient_profile:
+            patient_age = float(patient_profile.get("age", 45))
+            patient_bmi = float(patient_profile.get("bmi", 27.0))
+        elif supabase:
+            try:
+                db_p = supabase.table("patient_profiles").select("age, bmi").eq("id", patient_id).execute()
+                if db_p.data:
+                    patient_age = float(db_p.data[0].get("age", patient_age))
+                    patient_bmi = float(db_p.data[0].get("bmi", patient_bmi))
+            except Exception:
+                pass
 
-        features_df = pd.DataFrame([feat_values[:len(feat_names)]], columns=feat_names)
+        val_pool = {
+            "hr": float(payload.hr),
+            "spo2": float(payload.spo2),
+            "temp": float(payload.temp),
+            "bp_sys": float(payload.bp_sys),
+            "bp_dia": float(payload.bp_dia),
+            "activity_level": float(payload.activity_level),
+            "bmi": patient_bmi,
+            "age": patient_age,
+        }
+        feat_values = [val_pool.get(col, 0.0) for col in feat_names]
+        features_df = pd.DataFrame([feat_values], columns=feat_names)
 
         risk_label = "low"
         risk_conf  = 0.15

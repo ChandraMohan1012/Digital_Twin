@@ -1,0 +1,78 @@
+{
+  "dataset_name": "CDC NHANES 2017-2018 Adult Clinical Diabetes Cohort",
+  "source": "US Centers for Disease Control and Prevention (CDC) National Center for Health Statistics",
+  "total_records": 5261,
+  "columns": [
+    "SEQN",
+    "hba1c",
+    "hr",
+    "bp_sys",
+    "bp_dia",
+    "bmi",
+    "age",
+    "gender",
+    "activity_level",
+    "diabetes",
+    "high_risk"
+  ],
+  "target_definitions": {
+    "diabetes": "HbA1c >= 6.5% (ADA Clinical Diagnostic Threshold)",
+    "high_risk": "HbA1c >= 5.7% (ADA Early Screening Prediabetes/Diabetes Threshold)"
+  },
+  "prevalence": {
+    "diabetes_positive": 746,
+    "diabetes_prevalence_pct": 14.18,
+    "high_risk_positive": 2310,
+    "high_risk_prevalence_pct": 43.91
+  },
+  "feature_summary": {
+    "hr": {
+      "mean": 71.82,
+      "std": 11.51,
+      "min": 42.0,
+      "max": 136.0
+    },
+    "bp_sys": {
+      "mean": 126.16,
+      "std": 19.11,
+      "min": 78.0,
+      "max": 228.0
+    },
+    "bp_dia": {
+      "mean": 72.31,
+      "std": 11.44,
+      "min": 36.0,
+      "max": 124.0
+    },
+    "bmi": {
+      "mean": 29.68,
+      "std": 7.24,
+      "min": 14.2,
+      "max": 68.2
+    },
+    "age": {
+      "mean": 50.03,
+      "std": 18.59,
+      "min": 18.0,
+      "max": 80.0
+    },
+    "gender": {
+      "mean": 1.52,
+      "std": 0.5,
+      "min": 1.0,
+      "max": 2.0
+    },
+    "activity_level": {
+      "mean": 4.59,
+      "std": 1.93,
+      "min": 3.5,
+      "max": 8.0
+    },
+    "hba1c": {
+      "mean": 5.84,
+      "std": 1.09,
+      "min": 3.8,
+      "max": 16.2
+    }
+  }
+}
