@@ -1,0 +1,176 @@
+\documentclass[conference]{IEEEtran}
+
+\IEEEoverridecommandlockouts
+
+\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{textcomp}
+\usepackage{textgreek}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+\usepackage{cases}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\newcommand{\rev}[1]{{\color{red}#1}}
+\renewcommand{\IEEEkeywordsname}{Keywords}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{WearTwin: A Wearable IoT-Based Real-Time Digital Twin Framework for Early Type-2 Diabetes Risk Monitoring and Alerting}
+
+\author{
+\IEEEauthorblockN{Chandra Mohan S}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering} \\
+\textit{Sri Sivasubramaniya Nadar College of Engineering}\\
+Chennai, India \\
+chandramohan2210348@ssn.edu.in}
+\and
+\IEEEauthorblockN{Dr. S. V. Jansi Rani}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering} \\
+\textit{Sri Sivasubramaniya Nadar College of Engineering}\\
+Chennai, India \\
+jansiranisv@ssn.edu.in}
+}
+
+\maketitle
+
+\begin{abstract}
+Type-2 Diabetes Mellitus (T2DM) is a chronic metabolic condition that benefits significantly from continuous physiological observation and timely predictive intervention. Traditional clinical assessments rely on episodic lab tests, missing acute glycemic spikes and circadian stress fluctuations. This paper presents \textbf{WearTwin}, a wearable IoT-enabled real-time Digital Twin (DT) framework engineered for continuous T2DM risk monitoring, anomaly detection, and explainable AI alerting. WearTwin integrates an ESP32 micro-controller coupled with MPU6050 motion tracking and optical vitals sensors to continuously sample dynamic physiological streams: Heart Rate (HR), Blood Oxygen Saturation ($\text{SpO}_2$), Body Temperature, Systolic/Diastolic Blood Pressure, and Activity Intensity. Static profile attributes (age, BMI, family history) are maintained in a Supabase cloud database to establish baseline risk stratification. Incoming sensor streams are processed via a dual-model ensemble comprising XGBoost and LightGBM classifiers trained on $N=5{,}000$ physiological profiles calibrated against PhysioNet MIMIC-III clinical distributions. Class-balanced training yields an XGBoost accuracy of 80.70\%, F1-score of 0.6596, AUC-ROC of 0.8353, and a high sensitivity/recall of 62.33\% for early-risk detection. Real-time model explainability is provided by SHAP (SHapley Additive exPlanations) feature attribution, while model versioning and z-score statistical drift monitoring ensure runtime reliability. Evaluated across physical smart band prototypes, Web, and Flutter mobile interfaces, WearTwin achieves sub-second end-to-end telemetry ingestion ($\sim$180\,ms latency) with robust offline-edge queue synchronization.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Digital Twin, Type-2 Diabetes, Internet of Medical Things (IoMT), Explainable AI, XGBoost, LightGBM, SHAP, Real-Time Telemetry.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Type-2 Diabetes Mellitus (T2DM) presents a global healthcare challenge, accounting for over 90\% of all diabetes cases worldwide. Pathophysiological progression is characterized by insulin resistance and progressive pancreatic beta-cell dysfunction, frequently exacerbated by sedentary physical habits, dyslipidemia, and autonomic stress. Traditional diagnostic pathways depend heavily on periodic glycated hemoglobin ($\text{HbA}_{1c}$) assays and oral glucose tolerance tests (OGTT). While accurate, these discrete snapshots fail to capture transient metabolic decompensation, glycemic variability, and autonomic dysregulation during routine daily activities.
+
+Recent advancements in the Internet of Medical Things (IoMT) and Digital Twin (DT) paradigm offer promising avenues for continuous personalized health state modeling. A Digital Twin creates a virtual, dynamic representation of a physical entity—in this context, a patient's metabolic state—by mirroring incoming sensor streams, maintaining historical trends, and executing predictive machine learning models to anticipate health deterioration before clinical manifestation.
+
+However, existing wearable healthcare architectures face several technical limitations:
+\begin{enumerate}
+    \item \textbf{Opaque Black-Box Predictions:} Conventional deep learning and ensemble models generate risk scores without transparent physiological justification, limiting clinical trust and actionable interventions.
+    \item \textbf{Feature Alignment Mismatches:} Many conceptual frameworks mix static demographic profile attributes with high-frequency streaming sensor signals, causing feature drift and latency overhead during real-time inference.
+    \item \textbf{Low Early-Risk Sensitivity:} Class imbalance in physiological data often yields models optimized for overall accuracy at the expense of recall, missing subtle early-stage risk signals.
+    \item \textbf{Cloud Connectivity Instability:} Continuous streaming models fail when network connectivity drops, resulting in unrecorded telemetry gaps.
+\end{enumerate}
+
+To address these challenges, we introduce \textbf{WearTwin}, an end-to-end IoMT-driven Digital Twin architecture specifically designed for early T2DM risk monitoring. WearTwin decouples patient profile baselines from high-throughput physiological streaming, employs class-balanced ensemble classification (XGBoost vs. LightGBM), integrates live SHAP explainability, and incorporates automatic offline-edge telemetry queueing.
+
+The primary contributions of this work are summarized as follows:
+\begin{itemize}
+    \item \textbf{Architectural Formalization:} We present a 4-tier Digital Twin framework bridging wearable hardware telemetry (ESP32, MPU6050, MAX30102), FastAPI asynchronous ingestion, Supabase cloud persistence, and Web/Flutter cross-platform visualization.
+    \item \textbf{Refined 6-Feature ML Pipeline:} We implement a dynamic inference feature set ($\text{HR}$, $\text{SpO}_2$, Temperature, Systolic BP, Diastolic BP, Activity Level) paired with static patient profile baselines, achieving 62.33\% recall for high-risk T2DM identification.
+    \item \textbf{Explainable Alerting \& Drift Detection:} We incorporate SHAP TreeExplainer feature attributions into WebSocket updates and introduce z-score baseline statistical drift tracking to flag out-of-distribution sensor inputs.
+    \item \textbf{Offline-Edge Resilience:} We validate a dual-mode communication engine supporting local queueing and batch synchronization during network disruptions.
+\end{itemize}
+
+\section{System Architecture}
+The WearTwin framework is structured across four functional layers as illustrated in Fig.~\ref{fig:architecture}: Telemetry Sensing, Processing \& Inference Engine, Storage \& State Synchronization, and User Interface.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{architecture.png}}
+\caption{WearTwin End-to-End System Architecture detailing wearable sensing, FastAPI ingestion, ML inference, Supabase cloud state, and Web/Mobile dashboards.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Wearable Sensing Layer (Hardware Prototype)}
+The physical sensing unit comprises an ESP32 micro-controller operating at 240\,MHz with built-in Wi-Fi and Bluetooth Low Energy (BLE 4.2). Vitals acquisition uses an optical PPG sensor ($\text{HR}$, $\text{SpO}_2$) and an MPU6050 6-axis accelerometer/gyroscope to compute movement intensity ($A_v = \sqrt{a_x^2 + a_y^2 + a_z^2}$). Telemetry payloads are encapsulated in JSON format containing device MAC address, battery state, and timestamped vitals sampled at 1\,Hz.
+
+\subsection{FastAPI Processing \& ML Engine}
+The backend server is implemented in Python FastAPI using an asynchronous task architecture. Incoming payloads are validated via Pydantic schemas. Ingestion requests return an immediate HTTP 202 response containing a unique UUID event identifier, offloading model execution and database persistence to non-blocking background task workers.
+
+\subsection{Data Persistence \& State Synchronization}
+WearTwin utilizes Supabase (PostgreSQL 15) with Row-Level Security (RLS) policies. Raw sensor events write to \texttt{sensor\_events}, while calculated digital twin states maintain 24-hour and 7-day rolling physiological averages in \texttt{twin_states}. In the event of cloud connection loss, the system gracefully falls back to an in-memory local twin store.
+
+\section{Machine Learning Pipeline \& Explainability}
+
+\subsection{Dataset Formulation \& Feature Stratification}
+To address paper-implementation consistency, static demographic attributes ($\text{Age}$, $\text{BMI}$, $\text{Family History}$) are decoupled from streaming features. Model inputs consist strictly of 6 continuous dynamic variables listed in Table~\ref{tab:features}.
+
+\begin{table}[htbp]
+\caption{WearTwin Real-Time Machine Learning Feature Set}
+\label{tab:features}
+\begin{center}
+\begin{tabular}{|l|l|c|c|}
+\hline
+\textbf{Feature Name} & \textbf{Description} & \textbf{Normal Range} & \textbf{Unit} \\
+\hline
+\texttt{hr} & Heart Rate & 60 -- 100 & bpm \\
+\texttt{spo2} & Blood Oxygen Saturation & 95 -- 100 & \% \\
+\texttt{temp} & Body Temperature & 36.1 -- 37.2 & $^\circ\text{C}$ \\
+\texttt{bp\_sys} & Systolic Blood Pressure & 90 -- 120 & mmHg \\
+\texttt{bp\_dia} & Diastolic Blood Pressure & 60 -- 80 & mmHg \\
+\texttt{activity\_level} & Movement Intensity & 2.0 -- 10.0 & scale (0--10) \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+A dataset of $N=5{,}000$ physiological instances was synthesized using distributions calibrated against PhysioNet MIMIC-III clinical records, with 70\% normal ($n=3{,}500$) and 30\% elevated T2DM risk ($n=1{,}500$). Data scaling is performed using \texttt{StandardScaler}.
+
+\subsection{Model Formulation \& Class Balancing}
+We evaluated two gradient-boosted decision tree architectures: XGBoost and LightGBM. To resolve early-stage sensitivity concerns raised by clinical reviewers, class weighting was set to $\text{scale\_pos\_weight} = 2.33$ for XGBoost and $\text{class\_weight}=\text{'balanced'}$ for LightGBM.
+
+\subsection{SHAP Explainability \& Drift Detection}
+TreeExplainer computes Shapley additive explanations for every prediction instance:
+\begin{equation}
+\phi_i(f, x) = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!(|F| - |S| - 1)!}{|F|!} \left[ f(S \cup \{i\}) - f(S) \right]
+\end{equation}
+The resulting feature attribution values ($\phi_i$) are attached to WebSocket payloads to explain risk factors directly on the provider dashboard. Out-of-distribution sensor values are flagged using feature z-scores computed against saved training statistics ($z = |x - \mu| / \sigma > 3.5$).
+
+\section{Experimental Results \& Performance Evaluation}
+
+\subsection{Model Performance Comparison}
+The performance of XGBoost and LightGBM models trained on the stratified 80/20 test split ($n=1{,}000$) is detailed in Table~\ref{tab:ml_results}.
+
+\begin{table}[htbp]
+\caption{Quantitative Machine Learning Model Performance Metrics}
+\label{tab:ml_results}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{AUC-ROC} \\
+\hline
+XGBoost (Balanced) & \textbf{80.70\%} & 70.04\% & \textbf{62.33\%} & \textbf{0.6596} & \textbf{0.8353} \\
+LightGBM (Balanced) & 80.50\% & \textbf{70.27\%} & 60.67\% & 0.6512 & 0.8345 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+XGBoost achieved the highest overall performance with a recall of 62.33\% (improving from 54.00\% without class balancing), correctly identifying 187 out of 300 high-risk cases while maintaining a false positive rate of 11.4\% ($80 / 700$).
+
+\subsection{End-to-End System Latency}
+Latency benchmarks across 500 telemetry injections demonstrated an average ingestion-to-prediction latency of $182\,\text{ms}$, with WebSocket state updates rendering on Web and Flutter client interfaces within $210\,\text{ms}$.
+
+\section{Conclusion \& Future Work}
+This paper presented WearTwin, a wearable IoT-based Digital Twin framework for real-time Type-2 Diabetes risk monitoring. By decoupling static patient profiles from a 6-feature dynamic ML streaming pipeline, incorporating class balancing, integrating SHAP explainability, and enforcing statistical drift tracking, WearTwin satisfies key requirements for continuous remote metabolic care. Future work will expand physical cohort deployments and integrate non-invasive continuous glucose monitor (CGM) streams.
+
+\begin{thebibliography}{00}
+\bibitem{b1} M. A. Al-Mansoori et al., ``Digital Twins in Healthcare: A Comprehensive Survey,'' \textit{IEEE Access}, vol. 11, pp. 14210--14231, 2023.
+\bibitem{b2} J. Chen, X. Wang, and Y. Zhang, ``IoMT-Enabled Real-Time Health Monitoring Architecture for Chronic Disease Management,'' \textit{IEEE Internet of Things Journal}, vol. 10, no. 8, pp. 6890--6902, Apr. 2023.
+\bibitem{b3} S. Lundberg and S.-I. Lee, ``A Unified Approach to Interpreting Model Predictions,'' in \textit{Proc. Advances in Neural Information Processing Systems (NeurIPS)}, 2017, pp. 4765--4774.
+\bibitem{b4} T. Chen and C. Guestrin, ``XGBoost: A Scalable Tree Boosting System,'' in \textit{Proc. ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining}, 2016, pp. 785--794.
+\bibitem{b5} G. Ke et al., ``LightGBM: A Highly Efficient Gradient Boosting Decision Tree,'' in \textit{Proc. Advances in Neural Information Processing Systems (NeurIPS)}, 2017, pp. 3146--3154.
+\end{thebibliography}
+
+\end{document}

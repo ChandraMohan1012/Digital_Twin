@@ -1,25 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Twin Live Monitor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <title>Healthcare Digital Twin Live Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="background-anim"></div>
     <div class="container">
         <header>
             <div class="header-content">
                 <h1>Healthcare Digital Twin</h1>
-                <p class="subtitle">Real-time Patient Monitoring & ML Risk Assessment</p>
+                <p class="subtitle">Real-time Physiological Monitoring & XGBoost + SHAP Risk Assessment</p>
             </div>
-            <div class="status-indicator">
-                <div class="dot pulse"></div>
-                <span>Live Data Feed</span>
+            <div class="header-actions">
+                <div class="patient-selector-wrap">
+                    <label for="patientSelect">👨‍⚕️ Patient:</label>
+                    <select id="patientSelect" class="patient-select">
+                        <option value="3f0f57a9-2c05-4e3a-97bf-d9bb6c24cbc2">Sample Patient</option>
+                    </select>
+                    <button id="btnNewPatient" class="btn btn-sm btn-secondary">+ New</button>
+                </div>
+                <div class="status-indicator" id="statusIndicator">
+                    <div class="dot pulse" id="statusDot"></div>
+                    <span id="statusText">🟢 Online & Synced</span>
+                </div>
             </div>
         </header>
+
+        <!-- Dynamic Alert Banner -->
+        <div id="alertBanner" class="alert-banner hidden">
+            <span class="alert-icon">⚠️</span>
+            <div id="alertMessage" class="alert-text">Alert message goes here</div>
+        </div>
 
         <div class="top-row">
             <div class="glass-card risk-card" id="riskCard">
@@ -29,7 +46,9 @@
             </div>
             <div class="glass-card patient-card">
                 <h3>Patient Profile</h3>
-                <p><strong>ID:</strong> <span id="patientId">3f0f57a9-2c05-4e3a-97bf-d9bb6c24cbc2</span></p>
+                <p><strong>Name:</strong> <span id="patientName">Sample Patient</span></p>
+                <p><strong>ID:</strong> <span id="patientId" style="font-family: monospace; font-size: 0.85rem;">3f0f57a9-2c...</span></p>
+                <p><strong>Medical Notes:</strong> <span id="patientNotes">Prototype testing patient</span></p>
                 <p><strong>Status:</strong> <span id="patientStatus" class="tag">Loading...</span></p>
                 <p><strong>Last Updated:</strong> <span id="lastUpdated">--</span></p>
             </div>
@@ -63,14 +82,115 @@
             </div>
         </div>
 
-        <h2 class="section-title">AI Explainability (SHAP)</h2>
-        <div class="glass-card shap-card">
-            <p>Our ML model continuously evaluates the Twin State. Anomalies identified:</p>
-            <div id="shapList" class="shap-list">
-                <p class="text-muted" style="margin-top: 1rem;">Monitoring active. Top risk factors will appear here when elevated.</p>
+        <!-- Real-Time Vitals Chart -->
+        <h2 class="section-title">Real-Time Vitals Trend</h2>
+        <div class="glass-card chart-card">
+            <div class="chart-legend">
+                <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Heart Rate (bpm)</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>SpO2 (%)</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Temperature (°C)</span>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="vitalsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="two-col-row">
+            <!-- AI Explainability SHAP Section -->
+            <div class="glass-card shap-card">
+                <h2 class="section-title-sm">AI Explainability (SHAP Contribution)</h2>
+                <p class="text-muted">Impact of each physiological vital sign on patient risk prediction:</p>
+                <div id="shapList" class="shap-list">
+                    <p class="text-muted">Monitoring active. Live SHAP contributions will appear here.</p>
+                </div>
+            </div>
+
+            <!-- Interactive Vital Simulator Control Panel -->
+            <div class="glass-card simulator-card">
+                <h2 class="section-title-sm">Interactive Sensor Telemetry Simulator</h2>
+                <p class="text-muted">Inject test vital readings directly into backend engine:</p>
+
+                <div class="preset-buttons" style="flex-wrap: wrap;">
+                    <button id="btnPresetNormal" class="btn btn-secondary">Preset: Normal Vitals</button>
+                    <button id="btnPresetSpike" class="btn btn-danger">Preset: High Risk Spike</button>
+                    <button id="btnSimulateBLE" class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #6366f1); border: none;">⌚ Hardware Band (BLE)</button>
+                </div>
+
+                <form id="simulatorForm" class="simulator-form">
+                    <div class="form-group">
+                        <label for="inputHR">Heart Rate (bpm):</label>
+                        <input type="number" id="inputHR" value="76" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputSpO2">SpO2 (%):</label>
+                        <input type="number" id="inputSpO2" value="98.0" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputTemp">Temperature (°C):</label>
+                        <input type="number" id="inputTemp" value="36.7" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputBPSys">BP Systolic (mmHg):</label>
+                        <input type="number" id="inputBPSys" value="118" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputBPDia">BP Diastolic (mmHg):</label>
+                        <input type="number" id="inputBPDia" value="76" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputActivity">Activity Level (0=sedentary, 10=vigorous):</label>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <input type="range" id="inputActivity" min="0" max="10" step="0.5" value="5" style="flex:1;">
+                            <span id="activityVal" style="min-width:28px; font-weight:700; color:var(--accent)">5.0</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Inject Telemetry Data</button>
+                </form>
+                <div id="simulatorStatus" class="simulator-status"></div>
             </div>
         </div>
     </div>
+
+    <!-- Register New Patient Modal -->
+    <div id="patientModal" class="modal-overlay hidden">
+        <div class="glass-card modal-card">
+            <h3>👨‍⚕️ Register New Patient Profile</h3>
+            <form id="registerPatientForm" class="modal-form">
+                <div class="form-group">
+                    <label for="regName">Full Name:</label>
+                    <input type="text" id="regName" placeholder="e.g. John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="regAge">Age:</label>
+                    <input type="number" id="regAge" value="42" min="1" max="120" required>
+                </div>
+                <div class="form-group">
+                    <label for="regGender">Gender:</label>
+                    <select id="regGender">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="regBMI">BMI:</label>
+                    <input type="number" id="regBMI" value="25.5" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="regNotes">Medical Notes:</label>
+                    <input type="text" id="regNotes" placeholder="e.g. ICU Observation / Cardiac Telemetry">
+                </div>
+                <div id="regStatus" style="font-size:0.9rem; min-height:1.4em;"></div>
+                <div class="modal-actions">
+                    <button type="button" id="btnCancelPatient" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Patient Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

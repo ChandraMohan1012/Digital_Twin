@@ -1,0 +1,138 @@
+{
+  "version": "20260908_084558",
+  "best_model": "XGBoost",
+  "features": [
+    "hr",
+    "spo2",
+    "temp",
+    "bp_sys",
+    "bp_dia",
+    "activity_level"
+  ],
+  "num_features": 6,
+  "dataset": {
+    "total_samples": 5000,
+    "normal_samples": 3500,
+    "high_risk_samples": 1500,
+    "high_risk_ratio": 0.3,
+    "train_split": 0.8,
+    "test_split": 0.2,
+    "label_method": "latent_risk_score_with_gaussian_noise_sigma_1.6"
+  },
+  "metrics": {
+    "xgboost": {
+      "accuracy": 0.807,
+      "precision": 0.7004,
+      "recall": 0.6233,
+      "f1": 0.6596,
+      "auc": 0.8353,
+      "confusion_matrix": {
+        "TN": 620,
+        "FP": 80,
+        "FN": 113,
+        "TP": 187
+      }
+    },
+    "lightgbm": {
+      "accuracy": 0.805,
+      "precision": 0.7027,
+      "recall": 0.6067,
+      "f1": 0.6512,
+      "auc": 0.8345,
+      "confusion_matrix": {
+        "TN": 623,
+        "FP": 77,
+        "FN": 118,
+        "TP": 182
+      }
+    }
+  },
+  "drift_baseline": {
+    "hr": {
+      "mean": 79.9109,
+      "std": 20.5971,
+      "min": 40.0,
+      "max": 165.667,
+      "p5": 52.1296,
+      "p95": 128.2761
+    },
+    "spo2": {
+      "mean": 96.182,
+      "std": 3.0027,
+      "min": 80.913,
+      "max": 100.0,
+      "p5": 89.4968,
+      "p95": 99.6629
+    },
+    "temp": {
+      "mean": 37.0536,
+      "std": 0.7526,
+      "min": 35.231,
+      "max": 41.1345,
+      "p5": 36.1731,
+      "p95": 38.7925
+    },
+    "bp_sys": {
+      "mean": 119.0997,
+      "std": 20.7029,
+      "min": 70.0,
+      "max": 209.8767,
+      "p5": 85.3529,
+      "p95": 160.9652
+    },
+    "bp_dia": {
+      "mean": 76.5699,
+      "std": 12.8944,
+      "min": 40.0,
+      "max": 130.0,
+      "p5": 55.1556,
+      "p95": 102.0943
+    },
+    "activity_level": {
+      "mean": 4.6449,
+      "std": 2.5862,
+      "min": 0.0,
+      "max": 10.0,
+      "p5": 0.4601,
+      "p95": 9.0299
+    }
+  },
+  "threshold_analysis": [
+    {
+      "threshold": 0.5,
+      "recall": 0.6233,
+      "precision": 0.7004,
+      "f1": 0.6596,
+      "accuracy": 0.807
+    },
+    {
+      "threshold": 0.45,
+      "recall": 0.6667,
+      "precision": 0.6329,
+      "f1": 0.6494,
+      "accuracy": 0.784
+    },
+    {
+      "threshold": 0.4,
+      "recall": 0.7333,
+      "precision": 0.5759,
+      "f1": 0.6452,
+      "accuracy": 0.758
+    },
+    {
+      "threshold": 0.35,
+      "recall": 0.7833,
+      "precision": 0.5293,
+      "f1": 0.6317,
+      "accuracy": 0.726
+    },
+    {
+      "threshold": 0.3,
+      "recall": 0.8267,
+      "precision": 0.4788,
+      "f1": 0.6064,
+      "accuracy": 0.678
+    }
+  ],
+  "trained_at": "2026-09-08T03:15:58.645963+00:00"
+}
