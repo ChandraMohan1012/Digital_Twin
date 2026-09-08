@@ -2,6 +2,7 @@ import os
 import uuid
 import pickle
 import logging
+import asyncio
 import datetime
 import numpy as np
 import pandas as pd
@@ -183,6 +184,58 @@ if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
 else:
     print("WARNING: ML Model not found. Run train_model.py first.")
 
+# ---------------------------------------------------------------
+# MLOps Drift Accumulator & Dynamic Model Reloader
+# ---------------------------------------------------------------
+drift_event_log = []
+telemetry_retrain_buffer = []
+DRIFT_AUTO_RETRAIN_THRESHOLD = 50
+is_retraining_active = False
+
+def reload_ml_model_in_memory():
+    """Dynamically reloads ML model, scaler, and SHAP explainer from disk after promotion."""
+    global ml_model, scaler, explainer, feature_names_loaded, drift_stats
+    try:
+        if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+            with open(MODEL_PATH, "rb") as f:
+                ml_model = pickle.load(f)
+            with open(SCALER_PATH, "rb") as f:
+                scaler = pickle.load(f)
+            if os.path.exists(FEATURES_PATH):
+                with open(FEATURES_PATH, "rb") as f:
+                    feature_names_loaded = pickle.load(f)
+            if os.path.exists(DRIFT_STATS_PATH):
+                with open(DRIFT_STATS_PATH, "rb") as f:
+                    drift_stats = pickle.load(f)
+            try:
+                explainer = shap.TreeExplainer(ml_model)
+            except Exception:
+                n_feat = len(feature_names_loaded)
+                explainer = shap.Explainer(ml_model.predict, np.zeros((1, n_feat)))
+            logger.info(f"MLOps: Successfully reloaded promoted model ({len(feature_names_loaded)} features) with zero downtime.")
+    except Exception as e:
+        logger.error(f"MLOps: Model reload failed: {e}")
+
+async def trigger_async_mlops_retrain(force: bool = False):
+    """Executes automated retraining pipeline in a non-blocking worker."""
+    global is_retraining_active
+    if is_retraining_active:
+        return
+    is_retraining_active = True
+    try:
+        from ml.retrain_pipeline import run_continuous_retraining
+        batch = list(telemetry_retrain_buffer)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, run_continuous_retraining, batch, force)
+        if result.get("status") == "PROMOTED":
+            reload_ml_model_in_memory()
+            telemetry_retrain_buffer.clear()
+        logger.info(f"MLOps: Background retraining complete. Result: {result.get('status')}")
+    except Exception as ex:
+        logger.error(f"MLOps: Retraining worker encountered exception: {ex}")
+    finally:
+        is_retraining_active = False
+
 def check_drift(sample_dict, stats, z_threshold=3.5):
     """Flag features where the incoming value is far from the training distribution."""
     alerts = []
@@ -193,9 +246,15 @@ def check_drift(sample_dict, stats, z_threshold=3.5):
             continue
         z = abs((val - stats[feat]["mean"]) / stats[feat]["std"])
         if z > z_threshold:
-            alerts.append({"feature": feat, "value": val,
-                           "z_score": round(z, 2),
-                           "train_mean": stats[feat]["mean"]})
+            alert = {
+                "feature": feat,
+                "value": val,
+                "z_score": round(z, 2),
+                "train_mean": stats[feat]["mean"],
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }
+            alerts.append(alert)
+            drift_event_log.append(alert)
     return alerts
 
 class SensorPayload(BaseModel):
@@ -338,6 +397,10 @@ async def process_async_ml_and_twin_update(patient_id: str, payload: SensorPaylo
             drift_warnings = check_drift(raw_sample, drift_stats, z_threshold=3.5)
             if drift_warnings:
                 print(f"INFO: Drift detected for patient {patient_id}: {drift_warnings}")
+                telemetry_retrain_buffer.append(raw_sample)
+                if len(drift_event_log) >= DRIFT_AUTO_RETRAIN_THRESHOLD and not is_retraining_active:
+                    print(f"INFO: Drift threshold reached ({len(drift_event_log)} events). Triggering automated MLOps retraining...")
+                    asyncio.create_task(trigger_async_mlops_retrain())
 
         # 3. Predict using best ML model (LightGBM) & SHAP Explainability
         if ml_model and scaler:
@@ -689,6 +752,72 @@ async def batch_sync_offline_telemetry(batch: BatchIngestPayload, background_tas
         "message": f"Successfully queued {len(results)} offline telemetry items to async task worker.",
         "latest_result": results[-1] if results else None
     }
+
+# ---------------------------------------------------------------
+# MLOps Continuous Retraining & Registry Endpoints
+# ---------------------------------------------------------------
+class RetrainRequest(BaseModel):
+    force_promotion: bool = False
+
+@app.get("/mlops/status")
+async def get_mlops_status():
+    """
+    Returns live MLOps health, current active model version, drift buffer metrics,
+    and recent model registry history.
+    """
+    from ml.retrain_pipeline import load_mlops_registry
+    registry = load_mlops_registry()
+    current_version = registry[-1]["version"] if registry else "v1.0-base"
+    last_retrained = registry[-1]["timestamp"] if registry else None
+
+    feature_drift_counts = {}
+    for ev in drift_event_log[-500:]:
+        feat = ev.get("feature", "unknown")
+        feature_drift_counts[feat] = feature_drift_counts.get(feat, 0) + 1
+
+    return {
+        "status": "online",
+        "current_model_version": current_version,
+        "last_retrained_at": last_retrained,
+        "is_retraining_active": is_retraining_active,
+        "drift_metrics": {
+            "total_drift_events_logged": len(drift_event_log),
+            "drift_buffer_size": len(telemetry_retrain_buffer),
+            "auto_retrain_threshold": DRIFT_AUTO_RETRAIN_THRESHOLD,
+            "drift_by_feature": feature_drift_counts
+        },
+        "recent_registry_history": registry[-5:] if registry else []
+    }
+
+@app.post("/mlops/retrain", dependencies=[Depends(verify_api_key)])
+async def trigger_mlops_retrain_endpoint(req: RetrainRequest = RetrainRequest(), background_tasks: BackgroundTasks = None):
+    """
+    Triggers automated continuous retraining and Champion vs. Challenger quality gating.
+    """
+    if is_retraining_active:
+        return {
+            "status": "busy",
+            "message": "A continuous retraining pipeline is already executing in the background."
+        }
+
+    if background_tasks:
+        background_tasks.add_task(trigger_async_mlops_retrain, req.force_promotion)
+    else:
+        asyncio.create_task(trigger_async_mlops_retrain(req.force_promotion))
+
+    return {
+        "status": "scheduled",
+        "message": "Continuous retraining pipeline triggered asynchronously.",
+        "buffer_samples_queued": len(telemetry_retrain_buffer),
+        "force_promotion": req.force_promotion
+    }
+
+@app.post("/mlops/drift-clear", dependencies=[Depends(verify_api_key)])
+async def clear_drift_buffer():
+    """Clears accumulated drift logs and buffered telemetry."""
+    drift_event_log.clear()
+    telemetry_retrain_buffer.clear()
+    return {"status": "success", "message": "MLOps drift log and buffer cleared."}
 
 if __name__ == "__main__":
     import uvicorn

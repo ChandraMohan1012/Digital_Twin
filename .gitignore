@@ -5,5 +5,7 @@ __pycache__/
 .env.*
 .env.local
 ml/data/raw/
+ml/saved_models/archive/
 .DS_Store
+
 
